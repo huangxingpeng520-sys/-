@@ -1,8 +1,8 @@
-const { GoogleGenAI } = require("@google/genai");
-const { google } = require('googleapis');
+import { GoogleGenAI } from "@google/genai";
+import { google } from 'googleapis';
 
 // 初始化
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
 const auth = new google.auth.GoogleAuth({
   credentials: JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS),
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -30,17 +30,19 @@ async function run() {
 
     // 2. 检索今日价格
     console.log("🔍 正在通过 Gemini 搜索今日电解铜价格...");
-    const model = await ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: `查询今日(${today})电解铜现货价格。只返回一个纯数字，不要任何单位或文字。` }] }],
       tools: [{ googleSearch: {} }]
     });
     
     const text = result.response.text();
-    const price = parseInt(text.replace(/,/g, '').match(/\d+/)?.[0]);
+    // 提取数字逻辑
+    const priceMatch = text.replace(/,/g, '').match(/\d+/);
+    const price = priceMatch ? parseInt(priceMatch[0]) : 0;
 
     // 3. 校验并写入
-    if (price && price > 30000) { // 简单校验，防止录入错误数据
+    if (price && price > 30000) { 
       await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
         range: 'Sheet1!A:B',
