@@ -1,0 +1,5 @@
+{
+  "name": "Copy of 电解铜价格走势跟踪",
+  "description": "An automated AI agent for collecting, cleaning, and analyzing electrolytic copper market prices with Excel integration and trend visualization.",
+  "requestFramePermissions": []
+}
