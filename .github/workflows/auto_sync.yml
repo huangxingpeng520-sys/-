@@ -1,0 +1,21 @@
+name: 每日铜价自动同步
+on:
+  schedule:
+    - cron: '30 1 * * *' # 北京时间每天上午 9:30 自动运行
+  workflow_dispatch: # 允许你手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install googleapis @google/genai
+      - name: 执行同步脚本
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: node scripts/dailyUpdate.js
