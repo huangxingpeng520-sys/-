@@ -1,21 +1,50 @@
 name: 每日铜价自动同步
+
 on:
   schedule:
-    - cron: '30 1 * * *' # 北京时间每天上午 9:30 自动运行
-  workflow_dispatch: # 允许你手动点击运行
+    # UTC 1:30 = 北京时间 9:30
+    - cron: '30 1 * * *'
+  workflow_dispatch: # 允许手动点击运行
+
+# 关键：赋予脚本写入仓库的权限
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: 检出代码
+        uses: actions/checkout@v3
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - run: npm install googleapis @google/genai
+
+      - name: 安装依赖
+        # 只需要安装 Gemini SDK，不再需要 googleapis
+        run: npm install @google/genai
+
       - name: 执行同步脚本
         env:
+          # 只保留 Gemini 的 Key，Sheet 的 Key 已经不需要了
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
         run: node scripts/dailyUpdate.js
+
+      - name: 提交并推送数据更改
+        run: |
+          # 配置 GitHub 机器人身份
+          git config --global user.name "CopperPriceBot"
+          git config --global user.email "bot@github.com"
+          
+          # 检查是否有文件变化
+          if [[ -n $(git status -s) ]]; then
+            echo "检测到价格更新，准备提交..."
+            git add data/copper.csv
+            git commit -m "📈 自动更新铜价: $(date +'%Y-%m-%d')"
+            git push
+          else
+            echo "今日价格未变或脚本未产生新数据，跳过提交。"
+          fi
