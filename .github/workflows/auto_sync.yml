@@ -2,9 +2,10 @@ name: 每日铜价自动同步
 
 on:
   schedule:
-    # UTC 1:30 = 北京时间 9:30
-    - cron: '30 1 * * *'
-  workflow_dispatch: # 允许你随时手动点击 "Run workflow" 测试
+    # 🔴 建议修改：UTC 3:30 = 北京时间 11:30
+    # 这样能确保 AI 搜索时，今天的价格已经出来了
+    - cron: '30 3 * * *' 
+  workflow_dispatch:
 
 # ✅ 修正 1：增加写权限，这是机器人修改仓库文件的基础
 permissions:
