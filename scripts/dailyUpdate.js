@@ -9,43 +9,52 @@ const __dirname = path.dirname(__filename);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function run() {
-  console.log("🚀 2026版价格抓取引擎启动...");
+  console.log("🚀 启动带搜索功能的 AI 引擎...");
   
   try {
-    // 🔴 关键：升级为 2026 年主流的 2.0 版本模型
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // ✅ 关键修改 1：显式启用 Google 搜索工具
+    // 只有加了 tools: [{ googleSearch: {} }]，模型才能访问实时互联网数据
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.0-flash",
+      tools: [{ googleSearch: {} }] 
+    });
     
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
 
-    const prompt = `请查并返回今日(${today})上海有色网(SMM)电解铜现货均价。
-    输出要求：只返回一个纯数字（如 71500），不要任何额外文字。`;
+    // ✅ 关键修改 2：优化提示词，允许它在今天价格没出时使用昨天的数据
+    const prompt = `请使用 Google 搜索查询【上海有色网(SMM) 1#电解铜 现货均价】。
     
-    console.log(`正在请求模型数据，日期: ${today}...`);
+    日期目标：${today}。
+    如果今天的价格还没公布（通常北京时间11:00公布），请返回【最近一个交易日】的收盘均价。
+    
+    输出严格要求：
+    只返回一个纯数字（例如 71500），不要带单位，不要带任何解释文字。`;
+    
+    console.log(`正在联网搜索数据，日期目标: ${today}...`);
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
     
-    console.log(`AI 原始响应: "${text}"`);
+    console.log(`AI 搜索结果: "${text}"`);
     
-    // 增强的数字提取逻辑
+    // 提取数字
     const priceMatch = text.match(/\d{5,6}/); 
     const price = priceMatch ? parseInt(priceMatch[0]) : null;
 
     if (!price || price < 30000) {
-        throw new Error(`无效的价格数据: ${text}`);
+        throw new Error(`无法从搜索结果中提取有效价格: ${text}`);
     }
 
     // 写入文件
     const csvPath = path.join(__dirname, '../data/copper.csv');
+    // 注意：这里我们写入的是“抓取到的价格”，日期还是记为今天，保证图表连续性
     const newRow = `${today},${price},元/吨\n`;
 
     fs.appendFileSync(csvPath, newRow);
     console.log(`✅ 数据写入成功: ${today} -> ${price}`);
 
   } catch (error) {
-    // 打印详细错误到日志，方便排查
-    console.error("❌ 任务执行失败，详细信息:");
+    console.error("❌ 任务执行失败:");
     console.error(error.message);
-    if (error.stack) console.error(error.stack);
     process.exit(1); 
   }
 }
