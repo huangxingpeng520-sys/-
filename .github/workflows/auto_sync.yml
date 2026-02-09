@@ -24,8 +24,8 @@ jobs:
           node-version: '18'
 
       - name: 安装依赖
-        # 只需要安装 Gemini SDK，不再需要 googleapis
-        run: npm install @google/genai
+        # ✅ 修改这里：包名必须是 @google/generative-ai
+        run: npm install @google/generative-ai
 
       - name: 执行同步脚本
         env:
