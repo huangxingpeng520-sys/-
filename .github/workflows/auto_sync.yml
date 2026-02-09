@@ -2,11 +2,9 @@ name: 每日铜价自动同步
 
 on:
   schedule:
-    # UTC 1:30 = 北京时间 9:30
-    - cron: '30 1 * * *'
+    - cron: '30 1 * * *' # UTC 1:30 = 北京时间 9:30
   workflow_dispatch: # 允许手动点击运行
 
-# 关键：赋予脚本写入仓库的权限
 permissions:
   contents: write
 
@@ -24,27 +22,26 @@ jobs:
           node-version: '18'
 
       - name: 安装依赖
-        # ✅ 修改这里：包名必须是 @google/generative-ai
         run: npm install @google/generative-ai
 
       - name: 执行同步脚本
         env:
-          # 只保留 Gemini 的 Key，Sheet 的 Key 已经不需要了
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node scripts/dailyUpdate.js
 
       - name: 提交并推送数据更改
         run: |
-          # 配置 GitHub 机器人身份
           git config --global user.name "CopperPriceBot"
           git config --global user.email "bot@github.com"
           
-          # 检查是否有文件变化
-          if [[ -n $(git status -s) ]]; then
-            echo "检测到价格更新，准备提交..."
+          # 🔍 关键修改：使用 git status --porcelain 专门检查 data/copper.csv 是否有变化
+          if git status --porcelain | grep "data/copper.csv"; then
+            echo "✅ 检测到铜价数据更新，准备提交..."
             git add data/copper.csv
             git commit -m "📈 自动更新铜价: $(date +'%Y-%m-%d')"
             git push
           else
-            echo "今日价格未变或脚本未产生新数据，跳过提交。"
+            echo "⚠️ 今日数据未发生变化（可能是脚本报错或价格未变），跳过提交。"
+            # 即使没提交也不算失败，保持绿灯
+            exit 0
           fi
